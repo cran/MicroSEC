@@ -3,9 +3,9 @@
 \docType{data}
 \name{homology_searched}
 \alias{homology_searched}
-\title{An example sequence infromation file.}
+\title{An example sequence information file.}
 \format{
-A list with 7 factors, each contains 460 variables:
+A list with 7 factors, each contains 1508 variables:
 \describe{
 \item{sample_name}{sample name}
 \item{Chr}{altered chromosome}

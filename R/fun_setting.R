@@ -8,14 +8,18 @@
 #' @param neighbor_length The length from the mutation to the ends of the short
 #'   reference sequence.
 #' @param alt_length The length of altered bases.
+#' @importFrom Biostrings substring
+
 #' @return list(pre_search_length, post_search_length, peri_seq_1, peri_seq_2)
 fun_setting <- function(pre, post, neighbor_seq, neighbor_length, alt_length) {
   peri_seq_1 <- substring(neighbor_seq,
                          neighbor_length + 1 - pre,
-                         neighbor_length + post + alt_length)
+                         min(nchar(neighbor_seq),
+                           neighbor_length + post + alt_length))
   peri_seq_2 <- substring(neighbor_seq,
                          neighbor_length + 1 - post,
-                         neighbor_length + pre + alt_length)
+                         min(nchar(neighbor_seq),
+                           neighbor_length + pre + alt_length))
   return(list(pre, post, peri_seq_1, peri_seq_2))
 }
 

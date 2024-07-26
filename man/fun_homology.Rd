@@ -20,9 +20,9 @@ fun_homology(
 
 \item{min_homology_search}{Minimum length to define "homologous".}
 
-\item{ref_genome}{Reference genome.}
+\item{ref_genome}{Reference genome for the data.}
 
-\item{chr_no}{Chromosome number.}
+\item{chr_no}{Reference genome chromosome number (human=24, mouse=22).}
 
 \item{progress_bar}{"Y": You can see the progress visually.}
 }
@@ -33,13 +33,15 @@ msec
 This function attempts to search the homologous regions.
 }
 \examples{
-\donttest{
+\dontrun{
+data(msec_read_checked)
+data(homology_searched)
 fun_homology(msec = msec_read_checked,
-             df_distant = homology_searched,
-             min_homology_search = 40,
-             ref_genome = BSgenome.Hsapiens.UCSC.hg38::
-                            BSgenome.Hsapiens.UCSC.hg38,
-             chr_no = 24,
-             progress_bar = "Y")
+   df_distant = homology_searched,
+   min_homology_search = 40,
+   ref_genome = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38,
+   chr_no = 24,
+   progress_bar = "N"
+)
 }
 }

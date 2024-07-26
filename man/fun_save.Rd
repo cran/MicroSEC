@@ -4,20 +4,21 @@
 \alias{fun_save}
 \title{Save function.}
 \usage{
-fun_save(msec, sample_info, wd)
+fun_save(msec, output)
 }
 \arguments{
 \item{msec}{Mutation filtering information.}
 
-\item{sample_info}{The sample name.}
-
-\item{wd}{The directory to save.}
+\item{output}{output file name (full path).}
 }
 \description{
 This function attempts to save the filtering results.
 }
 \examples{
-\donttest{
-fun_save(msec_analyzed, "test_data", ".")
+\dontrun{
+data(msec_analyzed)
+fun_save(msec = msec_analyzed,
+         output = "./MicroSEC_test.tsv.gz"
+)
 }
 }

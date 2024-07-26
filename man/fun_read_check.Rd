@@ -7,13 +7,13 @@
 fun_read_check(
   df_mutation,
   df_bam,
-  df_mut_call,
   ref_genome,
   sample_name,
   read_length,
   adapter_1,
   adapter_2,
   short_homology_search_length,
+  min_homology_search,
   progress_bar
 )
 }
@@ -21,8 +21,6 @@ fun_read_check(
 \item{df_mutation}{Mutation information.}
 
 \item{df_bam}{Data from the BAM file.}
-
-\item{df_mut_call}{Read ID list.}
 
 \item{ref_genome}{Reference genome for the data.}
 
@@ -36,26 +34,30 @@ fun_read_check(
 
 \item{short_homology_search_length}{Small sequence for homology search.}
 
+\item{min_homology_search}{Minimum length to define "homologous".}
+
 \item{progress_bar}{"Y": You can see the progress visually.}
 }
 \value{
-list(msec, homology_search)
+list(msec, homology_search, mut_depth)
 }
 \description{
 This function attempts to check the mutation profile in each read.
 }
 \examples{
-\donttest{
+\dontrun{
+data(exampleMutation)
+data(exampleBam)
 fun_read_check(df_mutation = exampleMutation,
-               df_bam =  exampleBAM,
-               df_mut_call = exampleMutCall,
-               ref_genome = BSgenome.Hsapiens.UCSC.hg38::
-                              BSgenome.Hsapiens.UCSC.hg38,
-               sample_name = "H15-11943-1-T_TDv3",
-               read_length = 151,
-               adapter_1 = "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA",
-               adapter_2 = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
-               short_homology_search_length = 4,
-               progress_bar = "Y")
+df_bam = exampleBam,
+ref_genome = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38,
+sample_name = "sample",
+read_length = 150,
+adapter_1 = "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA",
+adapter_2 = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
+short_homology_search_length = 4,
+min_homology_search = 40,
+progress_bar = "N"
+)
 }
 }

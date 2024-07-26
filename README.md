@@ -1,5 +1,46 @@
 ![MicroSEC logo](MicroSEC_logo.png)
 
+# Version history
+2.1.3: Example files renewed.  
+2.1.1: Bug fixed.  
+2.1.0: Compatible with large indels in very short leads.  
+2.0.0: Processing time reduced to 30% due to changes in search algorithm.  
+  
+# Docker and Apptainer
+MicroSEC docker file can be downloadable via Docker-hub.  
+https://hub.docker.com/r/ikegamitky/microsec/tags
+```
+docker pull ikegamitky/microsec:v2.1.3
+```
+
+Apptainer cantainer can be built via Docker-hub.
+```
+apptainer pull docker://ikegamitky/microsec:v2.1.3
+```
+  
+Apptainer container can be built with a definition file (takes 30 min).  
+```
+wget https://raw.githubusercontent.com/MANO-B/MicroSEC/main/MicroSEC.def
+sudo apptainer build MicroSEC.sif MicroSEC.def
+```
+
+  
+# Analysis script file
+MicroSEC has been improved to dramatically reduce memory usage.  
+The speed of analysis is also improved by deleting parts of the BAM file that are not relevant to the mutations prior to analysis by MicroSEC.  
+Samtools is now mandatory.  
+Please download and use the new version of MicroSEC.R.  
+```
+wget https://raw.githubusercontent.com/MANO-B/MicroSEC/main/MicroSEC.R
+```
+
+# Known limitation
+PIK3CA E545A (chr3:179218304A>C, NM_006218.4:c.1634A>C) pathogenic mutation might
+be called as an artifact by MicroSEC, which may be a false positive error. 
+A PIK3CA pseudogene (LOC100422375) in chromosome 22 harbors a base substitution 
+which was identical with the mutation in PIK3CA c.1634A>C.  
+Please check the reads manually with IGV.  
+
 # MicroSEC pipeline for FFPE artifacts
 This pipeline is designed for filtering sequence errors found in formalin-fixed and 
 paraffin-embedded (FFPE) samples.  
@@ -9,8 +50,7 @@ paper:
 paraffin-embedded samples"  
 
 ## Supplementary Code
-> M. Ikegami et al., "MicroSEC: Sequence error filtering pipeline for 
-formalin-fixed and paraffin-embedded samples", in preparation.
+> M. Ikegami et al., "MicroSEC filters sequence errors for formalin-fixed and paraffin-embedded samples", Commun Biol 4, 1396 (2021). https://doi.org/10.1038/s42003-021-02930-4
 
 ## Contents
 
@@ -23,82 +63,86 @@ formalin-fixed and paraffin-embedded samples", in preparation.
 
 This pipeline is designed for filtering mutations found in formalin-fixed and paraffin-embedded (FFPE) samples.  
 The MicroSEC filter utilizes a statistical analysis, and the results for mutations with less than 10 supporting reads are not reliable.  
-Four files are necessary for the analysis: mutation information file, BAM file, and mutation supporting read ID information file.  
-  
-### File 1: mutation information file  
-This excel file should contain at least these contents:  
+Two files are necessary for the analysis: mutation information file, BAM file.  
+A mutation supporting read ID information file is desirable but not necessary.  
+Prepare a sample information tsv file.  
+### File 1: mutation information tsv file (required)  
+This tsv file should contain at least these contents (any number of other columns are allowed):  
 ```
-Sample       Gene       HGVS.c  HGVS.p Mut_type Total_QV>=20   %Alt   Chr  Pos         Ref Alt SimpleRepeat_TRF Neighborhood_sequence                      Transition  
-SL_1010-N6-B SLC25A24    _      _      1-snv    366            1.0929 chr1 108130741   C   T   N                CTACCTGGAGAATGGGCCCATGTGTCCAGGTAGCAGTAAGC  C>T_t
+Sample              Mut_type   Chr  Pos               Ref Alt SimpleRepeat_TRF Neighborhood_sequence  
+SL_1010-N6-B  1-snv         chr1 108130741   C    T   N                               CTACCTGGAGAATGGGCCCATGTGTCCAGGTAGCAGTAAGC
 ```  
 - Notation:  
     - Mut_type: [altered bases]-[mutation type (snv, ins, or del)]. 1-snv, 3-snv, 3-del, 1-ins, etc.  
-    - Total_QV>=20: The read number with total Q-value >=20.  
-    - Chr: chr1-22, chrX, and chrY for hg38. 1-22, X, and Y for hg19.  
+    - Chr: chr1-22, chrX, and chrY for hg19 and hg38. 1-20, X, and Y for mm10.  
+           MicroSEC handle both "chr1" and "1" format chromosomes.  
     - Pos/Ref/Alt: There are some difference from HGVS nomenclature as follows:  
           - 131C>T -> Pos/Ref/Alt 131/C/T.  
           - 514_515insC and 514A -> Pos/Ref/Alt 514/A/AC  
           - 244delC and 243A -> Pos/Ref/Alt 243/AC/A  
-    - SimpleRepeat_TRF: Whether the mutation locates at a simple repeat sequence or not.  
+    - SimpleRepeat_TRF: Whether the mutation locates at a simple repeat sequence or not (Y or N).  
     - Neighborhood_sequence: [5'-20 bases] + [Alt sequence] + [3'-20 bases].  
-    - Transition: 1-snv mutation pattern with a 3'-base. C>T_t represents CT to TT mutation. C>T_g_FFPE represents the possible FFPE artifact.  
-    - Sample, Mut_type, Chr, Pos, Ref, and Alt should be set exactly.  
-    - Gene, HGVS.c, HGVS.p, Total_QV>=20, %Alt, SimpleRepeat_TRF, and Transition can be set to any values.  
+    - Sample, Chr, Pos, Ref, and Alt should be set exactly.  
+    - If you do not know Mut_type, SimpleRepeat_TRF, or Neighborhood_sequence, enter "-".
+### File 2: BAM file (required)  
+This file should contain at least these contents (always included in standard BAM files):  
+- QNAME, FLAG, RNAME, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, ISIZE, and QUAL.  
+
+I only have experience processing BAM files of up to 20 gigabytes.  
+It is recommended that huge BAM files be split up for processing.  
   
-### File 2: BAM file  
-This file should contain at least these contents:  
-- QNAME, FLAG, RNAME, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, and QUAL  
-  
-### File 3: mutation supporting read ID information tsv file  
-This file should contain at least these contents:  
+For example,  
 ```
-Chr  Pos       Ref Alt        Mut_ID                                                                                                Mut
-chr1 2561609   T   A          _;ID001-1:579185f,ID004-1:1873933f;ID006-1:1131647f,ID001-1:570086f,ID008-1:1953407r,ID002-2:749570r  .;A;N
-chr6 346429    G   GACACACAC  _;ID005-2:545593f,ID006-1:1132212f,ID006-1:1132212r;ID004-1:991476r,ID004-2:516896f;ID002-1:670026f   .;.+ACACACAC;.-ACAC;N
+samtools view -b sort.bam chr1:100-1000 > output_chr1.bam
 ```
-- Mut_ID  
-    _;AAA,BBB,CCC;DDD,EEE,FFF represents the ID list corresponding to the Mut column separated by semicolons.  
-    Read ID is "QNAME in the BAM file" + "mapped strand information".  
-    Strand information can be extracted from the FLAG column in the BAM file.  
-    ID001-1:579185f represents that the read ID is ID001-1:579185 and the read was mapped to the forward strand.  
-    ID008-1:1953407r represents that the read ID is ID008-1:1953407 and the read was mapped to the reverse strand.  
-- Mut  
-    ".;A;N#" represents the mutation pattern: "reference base";"altered to A";"other alterations"  
-    ".;.+ACACACAC;.-ACAC;N" reapresents the mutation pattern: "reference base";"insertion ACACACAC";"deletion ACAC";"other alterations"  
+
+It is better to split the file by chromosome.  
+If the file size is still too large, split it further at a distance from the mutation.  
+Deleting regions where there are no mutations will lighten the process.  
+Please download and use MicroSEC.R script file.  
   
-### File 4: sample information tsv file  
-Seven or eight columns are necessary.  
+### File 3: sample information tsv file (required)  
+From seven to ten columns are necessary. Three optional columns can be omitted.  
 The file contains no header.
 ```
-[sample name] [mutation information excel file] [BAM file]          [read ID information directory] [read length] [adapter sequence read 1]         [optional: adapter sequence read 2] [reference genome]  
-PC9           /mnt/source/CCLE.xlsx             /mnt/source/PC9.bam /mnt/source/PC9_Cell_line       127           AGATCGGAAGAGCACACGTCTGAACTCCAGTCA AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT   hg38  
+[sample name] [mutation information tsv file] [BAM file] [read length] [adapter sequence read 1] [optional: adapter sequence read 2] [sample type: Human or Mouse] [panel name] [optional: reference genome fastq file] [optional: simple repeat region bed file]  
+PC9	./source/CCLE.tsv	./source/Cell_line/PC9.bam 127	AGATCGGAAGAGCACACGTCTGAACTCCAGTCA AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT Human TOP
+A375 ./source/CCLE.tsv.gz	./source/Cell_line/A375.bam	127	 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT Hg38 TOP ./reference/hg38.fa ./reference/simpleRepeat.bed.gz
 ```
   
-- Reference genome: Human (hg38), Mouse (mm10), hg19, hg38, or mm10
+- Reference genome: Human (hg38), Mouse (mm10), hg19, hg38, or mm10.
+  Support for other organisms is easy, and will be done as needed upon request.  
+
+### File 4: Reference genome  
+Reference fastq file is necessary when you using CRAM files.  
   
+### File 5: simple repeat region bed file (optional, but mandatory to detect simple repeat derived artifacts)  
+simpleRepeat.bed.gz file is necessary when you check simple repeat derived errors.  
+    
 ## Filtering detail
 This pipeline contains 8 filtering processes.  
 
 - Filter 1  : Shorter-supporting lengths distribute too short to occur (1-1 and 1-2).  
         - Filter 1-1: P-values are less than the threshold_p(default: 10^(-6)).  
-        - Filter 1-2: The longest shorter-supporting lengths is shorter than 40% of the read length.  
-- Filter 2  : Hairpin-structure induced error detection (2-1 or 2-2).  
-        - Filter 2-1: Palindromic sequences exist within 150 bases.  
+        - Filter 1-2: The shorter-supporting lengths distributed over less than 75% of the read length.  
+- Filter 2  : Hairpin-structure induced error detection (2-1 and 2-2).  
+        - Filter 2-1: Palindromic sequences exist within 200 bases.  
         - Filter 2-2: >=50% mutation-supporting reads contains a reverse complementary sequence of the opposite strand consisting >= 15 bases.  
-- Filter 3  : 3'-/5'-supporting lengths are too densely distributed to occur (3-1, 3-2, and 3-3).  
+- Filter 3  : 3'-/5'-supporting lengths are too densely distributed to occur (3-1 and 3-2).  
         - Filter 3-1: P-values are less than the threshold_p(default: 10^(-6)).  
-        - Filter 3-2: The distributions of 3'-/5'-supporting lengths are shorter than 80% of the read length.  
-        - Filter 3-3: <10% of bases are low quality (Quality score <18).  
-- Filter 4  : >=90% mutation-supporting reads are soft-clipped (after cutting adapter sequence).  
-- Filter 5  : >=20% mutations were called by chimeric reads comprising two distant regions.  
+        - Filter 3-2: The distributions of 3'-/5'-supporting lengths are within 75% of the read length.  
+- Filter 4  : >=15% mutations were called by chimeric reads comprising two distant regions.  
+- Filter 5  : >=50% mutations were called by soft-clipped reads.  
 - Filter 6  : Mutations locating at simple repeat sequences.  
-- Filter 7  : C>T_g false positive calls in FFPE samples.  
-- Filter 8  : Indel mutations locating at a >=15 homopolymer.  
- 
+- Filter 7  : Indel mutations locating at a >=15 homopolymer.  
+- Filter 8  : >=10% of bases are low quality (Quality score <18) in the mutation supporting reads.  
+
+Filter 1, 2, 3, and 4 detect possible FFPE artifacts.  
+Filter 5 may also be FFPE artifacts or mapping errors.  
+Filter 6, 7, and 8 detect frequent errors caused by the next generation sequencing platform.  
 Supporting lengths are adjusted considering small repeat sequences around the mutations.  
   
-Results are saved in a excel file.  
-The explatation of the results is written in detail in the second sheet of the excel file.  
+Results are saved in a tsv file.  
 
 github url: https://github.com/MANO-B/MicroSEC
 
@@ -106,19 +150,23 @@ github url: https://github.com/MANO-B/MicroSEC
 
 ### Hardware Requirements
 
-The scripts requires only a standard computer with enough RAM to support the operations defined by a user. For minimal performance, this will be a computer with about 8 GB of RAM. For optimal performance, we recommend a computer with the following specs:
+The scripts requires only a standard computer with enough RAM to support the operations defined by a user. For minimal performance, this will be a computer with about 4 GB of RAM (depending on the size of BAM file and the number of mutations). For optimal performance, we recommend a computer with the following specs:
 
-RAM: 32+ GB  
-CPU: 4+ cores, 4.2+ GHz/core
+RAM: 4+ GB  
+CPU: 2+ cores, 2.6+ GHz/core
 
-The runtimes below are generated using a computer with the recommended specs (32 GB RAM, 4 cores@4.2 GHz) and internet of speed 100 Mbps.
+The runtimes below are generated using a computer with the recommended specs (16 GB RAM, M1 Macbook air) and internet of speed 40 Mbps.
 
 ### Software Requirements
 
+### Samtools
+
+Samtools is used for pre-processing to remove reads that are not related to mutations. Version 1.12 is what I am using, but I think older versions will work if they support multi-core processing.  
+
 ### R language
 
-This script files runs on `R` for Windows, Mac, or Linux, which requires the R version 3.4.0 or later.
-
+This script files runs on `R` for Windows, Mac, or Linux, which requires the R version 3.5.0 or later.
+If you use version 3.4 or lower of R, you will have some difficulty installing the packages, but it is not impossible.  
 
 ### Package dependencies
 
@@ -128,136 +176,309 @@ Users should install the following packages prior to use the scripts, from an `R
 if (!requireNamespace("BiocManager", quietly = TRUE)){
     install.packages("BiocManager")
 }
-install.packages(c('tidyr', 'openxlsx', 'data.table', 'R.utils', 'stringr', 'magrittr', 'dplyr', 'gtools', 'devtools'), dependencies = TRUE)
+install.packages(c('stringr', 'dplyr', 'remotes'), dependencies = TRUE)
 BiocManager::install(c("Rsamtools", "Biostrings", "GenomicAlignments", "GenomeInfoDb"), update=FALSE)
 
 # install necessary genomes
 BiocManager::install("BSgenome.Hsapiens.UCSC.hg38", update=FALSE)
-BiocManager::install("BSgenome.Hsapiens.UCSC.hg19", update=FALSE)
-BiocManager::install("BSgenome.Mmusculus.UCSC.mm10", update=FALSE)
+# BiocManager::install("BSgenome.Hsapiens.UCSC.hg19", update=FALSE)
+# BiocManager::install("BSgenome.Mmusculus.UCSC.mm10", update=FALSE)
 ```
 
 which will install in about 30 minutes on a recommended machine.
 
 ### Package Versions
-
-All packages are in their latest versions as they appear on `CRAN` on Oct. 31, 2020. Users can check [CRAN snapshot](https://mran.microsoft.com/timemachine/) for details. The versions of software are, specifically:
+The program does not use any of the functions specific to the following version of the packages, so there is no problem if you use the latest version of the package.  
 
 ```
-> packageVersion("tidyr")
-[1] '1.1.2'
-> packageVersion("openxlsx")
-[1] '4.2.2'
-> packageVersion("data.table")
-[1] '1.13.2'
-> packageVersion("R.utils")
-[1] '2.10.1'
 > packageVersion("stringr")
 [1] '1.4.0'
-> packageVersion("magrittr")
-[1] '1.5'
 > packageVersion("dplyr")
 [1] '1.0.2'
 > packageVersion("Biostrings")
 [1] '2.54.0'
 > packageVersion("BSgenome.Hsapiens.UCSC.hg38")
 [1] '1.4.1'
-> packageVersion("BSgenome.Hsapiens.UCSC.hg19")
-[1] '1.4.0'
-> packageVersion("BSgenome.Mmusculus.UCSC.mm10")
-[1] '1.4.0'
 > packageVersion("GenomicAlignments")
 [1] '1.22.1'
 > packageVersion("Rsamtools")
 [1] '2.0.3'
-> packageVersion("gtools")
-[1] '3.8.2'
-> packageVersion("devtools")
-[1] '2.3.2'
+> packageVersion("remotes")
+[1] '2.5.0'
 > packageVersion("GenomeInfoDb")
 [1] '1.22.1'
 ```
 
 ## Instructions for Use
+See also https://rdrr.io/cran/MicroSEC/
 - How to install
 ```
-devtools::install_github("MANO-B/MicroSEC", upgrade="never")  
+# Stable version (v2.1.3) from github (recommended)
+remotes::install_github("MANO-B/MicroSEC", ref = 'v2.1.3')
+
+# Developmental version from github
+remotes::install_github("MANO-B/MicroSEC")
 ```
 - How to use in command line
 ```
 # download only once
 wget https://raw.githubusercontent.com/MANO-B/MicroSEC/main/MicroSEC.R
-
-# Style 1
+# run the script
 Rscript MicroSEC.R [working/output directory] [sample information tsv file] [progress bar Y/N]
- 
-# Style 2 (for pipeline use)
-Rscript MicroSEC.R [output filename] [sample name] [mutation information tsv.gz] [BAM file] [read ID information directory] [read length] [adapter sequence read 1] [adapter sequence read 2] [sample type: Human or Mouse]
 ```  
 - Example
 ```
 Rscript MicroSEC.R /mnt/HDD8TB/MicroSEC /mnt/HDD8TB/MicroSEC/source/Sample_list.txt Y  
-Rscript MicroSEC.R /mnt/result/post_filter/SAMPLE.gz /mnt/result/mutation/SAMPLE.gz /mnt/result/mutation/SAMPLE.gz /mnt/result/BAM/SAMPLE.bam /mnt/result/ID 150 	AGATCGGAAGAGCACACGTCTGAACTCCAGTCA AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT hg38
 ```  
 - How to use in R Console
 ```
+## See also the vignette file.
+
 ## Necessary packages
 library(MicroSEC)
 
-wd = "/mnt/HDD8TB/MicroSEC" # set your working/output directory
-sample_list = "/mnt/HDD8TB/MicroSEC/source/Sample_list.txt"
-progress_bar = "Y"
+options(show.error.messages = FALSE, warn = -1)
+wd <- "mnt/HDD8TB/MicroSEC" # set your working/output directory
+sample_list <- "mnt/HDD8TB/MicroSEC/source/Sample_list.txt"
+progress_bar <- "Y"
   
+setwd(wd)
+
 # load sample information tsv file
-sample_info = read.csv(sample_list,
+sample_info <- read.csv(sample_list,
                        header = FALSE,
                        stringsAsFactors = FALSE,
                        sep = "\t")
 
 # initialize
-msec = NULL
-homology_search = NULL
-mut_depth = NULL
+msec <- NULL
+homology_search <- NULL
+mut_depth <- NULL
 
 for (sample in seq_len(dim(sample_info)[1])) {
-  sample_name = sample_info[sample, 1]
-  mutation_file = sample_info[sample, 2]
-  bam_file = sample_info[sample, 3]
-  read_list = sample_info[sample, 4]
-  read_length = as.integer(sample_info[sample, 5])
-  adapter_1 = sample_info[sample, 6]
-  if (sample_info[sample, 7] %in%
+  sample_name <- sample_info[sample, 1]
+  mutation_file <- sample_info[sample, 2]
+  bam_file <- sample_info[sample, 3]
+  read_length <- as.integer(sample_info[sample, 4])
+  adapter_1 <- sample_info[sample, 5]
+  if (sample_info[sample, 6] %in%
       c("Human", "Mouse", "hg19", "hg38", "mm10")) {
-    adapter_2 = adapter_1
-    organism = sample_info[sample, 7]
+    adapter_2 <- adapter_1
+    organism <- sample_info[sample, 6]
+    panel <- sample_info[sample, 7]
+    if (dim(sample_info)[2] == 8) {
+      reference_genome <- sample_info[sample, 8]
+    }
+    if (dim(sample_info)[2] == 9) {
+      reference_genome <- sample_info[sample, 8]
+      simple_repeat_list <- sample_info[sample, 9]
+    }
   } else{
-    adapter_2 = sample_info[sample, 7]
-    organism = sample_info[sample, 8]
+    adapter_2 <- sample_info[sample, 6]
+    organism <- sample_info[sample, 7]
+    panel <- sample_info[sample, 8]
+    if (dim(sample_info)[2] == 9) {
+      reference_genome <- sample_info[sample, 9]
+    }
+    if (dim(sample_info)[2] == 10) {
+      reference_genome <- sample_info[sample, 9]
+      simple_repeat_list <- sample_info[sample, 10]
+    }
+  }
+  bam_file_slim <- paste0(bam_file, ".SLIM")
+  bam_file_tmp = paste0(bam_file, ".tmp.bam")
+  
+  # load genomic sequence
+  ref_genome <- fun_load_genome(organism)
+  chr_no <- fun_load_chr_no(organism)
+  if (ref_genome@user_seqnames[[1]] == "chr1") {
+    chromosomes <- paste0("chr", c(seq_len(chr_no - 2),"X", "Y"))
+  }
+  if (ref_genome@user_seqnames[[1]] == "1") {
+    chromosomes <- paste0("", c(seq_len(chr_no - 2),"X", "Y"))
+  }
+  
+  # load mutation information
+  df_mutation <- fun_load_mutation(mutation_file, sample_name, ref_genome)
+  
+  if (tools::file_ext(bam_file) == "bam") {
+    bam_file_bai <- paste0(bam_file, ".bai")
+  } else if (tools::file_ext(bam_file) == "cram") {
+    bam_file_bai <- paste0(bam_file, ".crai")
+  }
+  if (!file.exists(bam_file_bai) & !file.exists(bam_file_slim)) {
+    print("Sorting a BAM/CRAM file...")
+    if (tools::file_ext(bam_file) == "bam") {
+      bam_file_sort <- paste0(bam_file, "_sort.bam")
+      syscom <- paste0("samtools sort -@ 4 -o ",
+                       bam_file_sort, " ",
+                       bam_file)
+    } else if (tools::file_ext(bam_file) == "cram") {
+      bam_file_sort <- paste0(bam_file, "_sort.cram")
+      syscom <- paste0("samtools sort -@ 4 -O cram -o ",
+                       bam_file_sort," ",
+                       bam_file)
+    }        
+    system(syscom)
+    syscom <- paste0("samtools index ",
+                    bam_file_sort)
+    system(syscom)
+    bam_file <- bam_file_sort
   }
 
-  # load mutation information
-  df_mutation = fun_load_mutation(mutation_file, sample_name)
-  df_bam = fun_load_bam(bam_file)
-  df_mut_call = fun_load_id(read_list)
-
-  # load genomic sequence
-  ref_genome = fun_load_genome(organism)
-  chr_no = fun_load_chr_no(organism)
+  if (!file.exists(paste0(bam_file_slim, ".bai"))) {
+    print("Trimming a BAM/CRAM file...")
+    df_mutation_save <- df_mutation
+    download_region <- data.frame(matrix(rep(NA,3),nrow=1))[numeric(0),]
+    colnames(download_region) <- c("chrom", "chromStart", "chromEnd")
+    print(paste0(sample_name, ": ", dim(df_mutation_save)[1], " mutations"))
+    for (i in chromosomes) {
+      df_mutation <- df_mutation_save[df_mutation_save$Chr == i,]
+      continuous = FALSE
+      for (mut_no in seq_len(dim(df_mutation)[1])) {
+        if (mut_no == 1 & mut_no != dim(df_mutation)[1]) {
+          if (df_mutation$Chr[mut_no + 1] != df_mutation$Chr[mut_no] |
+             df_mutation$Pos[mut_no + 1] > df_mutation$Pos[mut_no] + 400) {
+            download_region <- rbind(
+              download_region,
+              c(df_mutation$Chr[mut_no],
+                max(1, df_mutation$Pos[mut_no] - 200) - 1,
+                df_mutation$Pos[mut_no] + 200))
+            colnames(download_region) <-
+              c("chrom", "chromStart", "chromEnd")
+            continuous <- FALSE
+          } else {
+            continuous <- TRUE
+            pos_last <- max(1, df_mutation$Pos[mut_no] - 200)
+          }
+        } else if (mut_no == 1 & mut_no == dim(df_mutation)[1]) {
+          download_region <- rbind(
+            download_region,
+            c(df_mutation$Chr[mut_no],
+              max(1, df_mutation$Pos[mut_no] - 200) - 1,
+              df_mutation$Pos[mut_no] + 200))
+          colnames(download_region) <-
+            c("chrom", "chromStart", "chromEnd")
+        } else if (mut_no == dim(df_mutation)[1]) {
+          if (continuous) {
+            download_region <- rbind(
+              download_region,
+              c(df_mutation$Chr[mut_no],
+                pos_last - 1,
+                df_mutation$Pos[mut_no] + 200))
+            colnames(download_region) <-
+              c("chrom", "chromStart", "chromEnd")
+          } else {
+            download_region = rbind(
+              download_region,
+              c(df_mutation$Chr[mut_no],
+                max(1, df_mutation$Pos[mut_no] - 200) - 1,
+                df_mutation$Pos[mut_no] + 200))
+            colnames(download_region) <-
+              c("chrom", "chromStart", "chromEnd")
+          }
+        } else {
+          if (continuous) {
+            if (df_mutation$Chr[mut_no + 1] != df_mutation$Chr[mut_no] |
+                df_mutation$Pos[mut_no + 1] > df_mutation$Pos[mut_no] + 400) {
+              download_region = rbind(
+                download_region,
+                c(df_mutation$Chr[mut_no],
+                  pos_last - 1,
+                  df_mutation$Pos[mut_no] + 200))
+              colnames(download_region) <-
+                c("chrom", "chromStart", "chromEnd")
+              continuous = FALSE
+            }
+          } else {
+            if (df_mutation$Chr[mut_no + 1] != df_mutation$Chr[mut_no] |
+               df_mutation$Pos[mut_no + 1] > df_mutation$Pos[mut_no] + 400) {
+              download_region <- rbind(
+                download_region,
+                c(df_mutation$Chr[mut_no],
+                  max(1, df_mutation$Pos[mut_no] - 200) - 1,
+                  df_mutation$Pos[mut_no] + 200))
+              colnames(download_region) <-
+                c("chrom", "chromStart", "chromEnd")
+            } else {
+              continuous <- TRUE
+              pos_last <- max(1, df_mutation$Pos[mut_no] - 200)
+            }
+          }
+        }
+      }
+    }
+    write_tsv(x = download_region,
+              file = paste0(bam_file,".bed"),
+              progress = F,
+              col_names = F)
+    rm(download_region)
+    system_out <- 1
+    if (tools::file_ext(bam_file) == "bam") {
+      syscom <- paste0("samtools view -h --no-PG ",
+                     bam_file, " -L ",
+                     paste0(bam_file,".bed"), " > ",
+                     bam_file_slim)
+    } else if (tools::file_ext(bam_file) == "cram") {
+      file_crai <- paste0(bam_file, ".crai")
+      syscom <- paste0("samtools view -h --no-PG ",
+                       bam_file, " -T ",
+                       reference_genome, " ",
+                       "-X ", file_crai, " -L ",
+                       paste0(bam_file,".bed"), " > ",
+                       bam_file_slim)
+    }
+    system_out = (system(syscom))
+    if(system_out == 0){
+      system_out <- 1
+      syscom <- paste0("samtools sort -o ",
+                       bam_file_tmp, " ",
+                       bam_file_slim)
+      print("Sorting BAM file...")
+      system_out <- (system(syscom))
+      if(system_out == 0){
+        system_out <- 1
+        syscom = paste0("samtools view -bS ",
+                        bam_file_tmp, " > ",
+                        bam_file_slim)
+        print("Compressing BAM file...")
+        system_out <- (system(syscom))
+        if(system_out == 0){
+          system_out <- 1
+          syscom = paste0("samtools index ", bam_file_slim)
+          print("Indexing BAM file...")
+          system_out <- (system(syscom))
+          if(system_out == 0){
+            print(paste0("Slimmed BAM files were saved as ", bam_file_slim))
+            #file.remove(bam_file)
+            file.remove(bam_file_tmp)
+          }
+        }
+      }
+    }
+    df_mutation <- df_mutation_save
+    rm(df_mutation_save)
+  }
+    
+  bam_file <- bam_file_slim
+  df_bam <- fun_load_bam(bam_file)
 
   # analysis
-  result = fun_read_check(df_mutation = df_mutation,
-                          df_bam =  df_bam,
-                          df_mut_call = df_mut_call,
-                          ref_genome = ref_genome,
-                          sample_name = sample_name,
-                          read_length = read_length,
-                          adapter_1 = adapter_1,
-                          adapter_2 = adapter_2,
-                          short_homology_search_length = 4,
-                          progress_bar = progress_bar)
-  msec = rbind(msec, result[[1]])
-  homology_search = rbind(homology_search, result[[2]])
-  mut_depth = rbind(mut_depth, result[[3]])
+  result <- fun_read_check(df_mutation = exampleMutation,
+                           df_bam = exampleBAM,
+                           ref_genome = ref_genome,
+                           sample_name = sample_name,
+                           read_length = read_length,
+                           adapter_1 = adapter_1,
+                           adapter_2 = adapter_2,
+                           short_homology_search_length = 4,
+                           min_homology_search = 40,
+                           progress_bar = progress_bar)
+  msec <- rbind(msec, result[[1]])
+  homology_search <- rbind(homology_search, result[[2]])
+  mut_depth <- list(rbind(mut_depth[[1]], result[[3]][[1]]),
+                   rbind(mut_depth[[2]], result[[3]][[2]]),
+                   rbind(mut_depth[[3]], result[[3]][[3]])) 
 }
 # search homologous sequences
 msec = fun_homology(msec,
@@ -275,66 +496,28 @@ msec = fun_analysis(msec,
                     min_homology_search = 40,
                     threshold_p = 10 ^ (-6),
                     threshold_hairpin_ratio = 0.50,
-                    threshold_soft_clip_ratio = 0.90,
-                    threshold_short_length = 0.8,
-                    threshold_distant_homology = 0.2,
+                    threshold_short_length = 0.75,
+                    threshold_distant_homology = 0.15,
+                    threshold_soft_clip_ratio = 0.50,
                     threshold_low_quality_rate = 0.1,
                     homopolymer_length = 15)
 
 # save the results
-fun_save(msec, sample_info[1,1], wd)
+fun_save(msec, paste0(wd, "/", sample_info[1,1], ".tsv"))
 ```
 
 - Output files  
-  one excel file and one tsv file are saved in the working/output directory.
+  A tsv file is saved in the working/output directory.
 ```
-MicroSEC-result_[Sample name]_[Date].xlsx
-MicroSEC_[Sample name].tsv
-```
-  like following:  
-```
-MicroSEC-result_PC9_2020-11-05.xlsx
-MicroSEC_PC9.tsv
+[Sample name].tsv
 ```
   
 - Sample name is set to the sample of interest in the Sample column of the mutation information file.
 - Confirm the read length in the platform.
-- Confirm the adapter sequence; Todai Onco Panel ("AGATCGGAAGAGCACACGTCTGAACTCCAGTCA" and "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT").
+- Confirm the adapter sequence; Illumina sequencer ("AGATCGGAAGAGCACACGTCTGAACTCCAGTCA" and "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT").
 - If you input only one adapter sequence, the sequence will be used for read 1 and read 2. 
 - If you want to know the progress visually, [progress bar Y/N] should be Y.
   
-  
-### Conversion of mutation information files
-MicroSEC utilizes a mutation information file. The format of the file is written differently from common HGVS nomenclature.  
-A conversion function is prepared.
-```
-# Conversion example
-# Set column names correctly.
-#
-# Before (hg19)
-# Sample Hugo_Symbol    Chr   Start_Position   End_Position Variant_Type Reference Tumor_Seq Protein_Change
-# LS411N BRAF           7     140453136        140453136    SNP          A         T         p.V600E
-# LS411N CELSR1         22    46931227         46931227     DEL          C         -         p.G615fs
-# LS411N APC            5     112175951        112175952    INS          -         A         p.E1554fs
-#
-# After
-# Sample Gene     Chr   Pos          Mut_type  Ref   Alt HGVS.p       Neighborhood_sequence
-# LS411N BRAF     7     140453136    1-snv     A     T   p.V600E      ACCCACTCCATCGAGATTTCTCTGTAGCTAGACCAAAATCA
-# LS411N CELSR1   22    46931226     1-del     GC    G   p.G615fs     TCTTAGGCCCAGCGCTGCCGCCCCCAGAAAGGTGGAGGCC
-# LS411N APC      5     112175951    1-ins     G     GA  p.E1554fs    AAAACCAAGAGAAAGAGGCAGAAAAAAACTATTGATTCTGAA    
-
-library(openxlsx)
-library(MicroSEC)
-
-mutation_file = "/mnt/HDD8TB/MicroSEC/mutation.xlsx"
-organism = "hg19"
-
-df_mutation = fun_convert(mutation_file = mutation_file,
-                          organism = organism)
-
-write.xlsx(df_mutation, "/mnt/HDD8TB/MicroSEC/mutation_modified.xlsx")
-```
-
 ### Reproducibility
 
 The source code is available in MicroSEC.R. 

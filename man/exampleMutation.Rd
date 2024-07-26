@@ -5,22 +5,16 @@
 \alias{exampleMutation}
 \title{An example mutation file.}
 \format{
-A list with 14 variables:
+A list with 8 factors, each contains 29 variables
 \describe{
 \item{Sample}{sample name}
-\item{Gene}{altered gene}
-\item{HGVS.c}{base change}
-\item{HGVS.p}{protein change}
 \item{Mut_type}{mutation type}
-\item{Total_QV>=20}{total reads}
-\item{\%Alt}{altered base ratio}
 \item{Chr}{altered chromosome}
 \item{Pos}{altered position}
 \item{Ref}{reference base}
 \item{Alt}{altered base}
 \item{SimpleRepeat_TRF}{mutation locating repeat sequence}
 \item{Neighborhood_sequence}{neighborhood sequence}
-\item{Transition}{base change type}
 ...
 }
 }

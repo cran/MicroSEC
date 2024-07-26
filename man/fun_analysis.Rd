@@ -11,9 +11,9 @@ fun_analysis(
   min_homology_search,
   threshold_p,
   threshold_hairpin_ratio,
-  threshold_soft_clip_ratio,
   threshold_short_length,
   threshold_distant_homology,
+  threshold_soft_clip_ratio,
   threshold_low_quality_rate,
   homopolymer_length
 )
@@ -32,13 +32,12 @@ search.}
 
 \item{threshold_hairpin_ratio}{The smallest hairpin read ratio.}
 
-\item{threshold_soft_clip_ratio}{The smallest rate of significantly
-soft-clipped reads.}
-
 \item{threshold_short_length}{Reads shorter than that are analyzed.}
 
 \item{threshold_distant_homology}{The smallest rate of reads from other
 regions.}
+
+\item{threshold_soft_clip_ratio}{The rate of soft-clipped reads.}
 
 \item{threshold_low_quality_rate}{The smallest rate of low quality bases.}
 
@@ -51,15 +50,18 @@ msec
 This function analyzes the filtering results.
 }
 \examples{
+data(msec_summarized)
+data(mut_depth_checked)
 fun_analysis(msec = msec_summarized,
              mut_depth = mut_depth_checked,
              short_homology_search_length = 4,
              min_homology_search = 40,
              threshold_p = 10 ^ (-6),
              threshold_hairpin_ratio = 0.50,
-             threshold_soft_clip_ratio = 0.90,
-             threshold_short_length = 0.8,
-             threshold_distant_homology = 0.2,
+             threshold_short_length = 0.75,
+             threshold_distant_homology = 0.15,
+             threshold_soft_clip_ratio = 0.50,
              threshold_low_quality_rate = 0.1,
-             homopolymer_length = 15)
+             homopolymer_length = 15
+)
 }

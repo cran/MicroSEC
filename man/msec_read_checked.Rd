@@ -5,22 +5,16 @@
 \alias{msec_read_checked}
 \title{An example mutation file.}
 \format{
-A list with 36 variables:
+A list with 34 factors, each contains 46527 variables
 \describe{
 \item{Sample}{sample name}
-\item{Gene}{altered gene}
-\item{HGVS.c}{base change}
-\item{HGVS.p}{protein change}
 \item{Mut_type}{mutation type}
-\item{Total_QV>=20}{total reads}
-\item{\%Alt}{altered base ratio}
 \item{Chr}{altered chromosome}
 \item{Pos}{altered position}
 \item{Ref}{reference base}
 \item{Alt}{altered base}
 \item{SimpleRepeat_TRF}{mutation locating repeat sequence}
 \item{Neighborhood_sequence}{neighborhood sequence}
-\item{Transition}{base change type}
 \item{read_length}{read length}
 \item{mut_type}{mutation type}
 \item{alt_length}{length of the mutated bases}
@@ -28,13 +22,17 @@ A list with 36 variables:
 \item{soft_clipped_read}{number of soft-clipped reads}
 \item{flag_hairpin}{number of reads produced by hairpin structure}
 \item{hairpin_length}{maximum length of palindromic sequences}
-\item{pre_support_length}{muximum 5'-supporting length}
-\item{post_support_length}{muximum 3'-supporting length}
+\item{pre_support_length}{maximum 5'-supporting length}
+\item{post_support_length}{maximum 3'-supporting length}
 \item{short_support_length}{minimum supporting length}
 \item{pre_minimum_length}{minimum 5'-supporting length}
 \item{post_minimum_length}{minimum 3'-supporting length}
+\item{pre_minimum_length}{minimum 5'-supporting length}
 \item{low_quality_base_rate_under_q18}{low quality base rate}
-\item{pre_rep_status}{5'-repeat sequence length}
+\item{low_quality_pre}{low quality base rate of 5'- side}
+\item{low_quality_post}{low quality base rate of 3'- side}
+\item{pre_farthest}{5'-farthest supported base from the mutated base}
+\item{post_farthest}{3'-farthest supported base from the mutated base}
 \item{post_rep_status}{3'-repeat sequence length}
 \item{homopolymer_status}{homopolymer sequence length}
 \item{indel_status}{whether the mutation is indel or not}
