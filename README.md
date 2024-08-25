@@ -1,7 +1,9 @@
 ![MicroSEC logo](MicroSEC_logo.png)
 
 # Version history
-2.1.3: Example files renewed.  
+2.1.6: Bug with simple repeat annotation fixed.  
+2.1.5: Bug fixed.  
+2.1.3: Example files renewed. Package in CRAN available.  
 2.1.1: Bug fixed.  
 2.1.0: Compatible with large indels in very short leads.  
 2.0.0: Processing time reduced to 30% due to changes in search algorithm.  
@@ -10,12 +12,12 @@
 MicroSEC docker file can be downloadable via Docker-hub.  
 https://hub.docker.com/r/ikegamitky/microsec/tags
 ```
-docker pull ikegamitky/microsec:v2.1.3
+docker pull ikegamitky/microsec:v2.1.6
 ```
 
 Apptainer cantainer can be built via Docker-hub.
 ```
-apptainer pull docker://ikegamitky/microsec:v2.1.3
+apptainer pull docker://ikegamitky/microsec:v2.1.6
 ```
   
 Apptainer container can be built with a definition file (takes 30 min).  
@@ -36,8 +38,8 @@ wget https://raw.githubusercontent.com/MANO-B/MicroSEC/main/MicroSEC.R
 
 # Known limitation
 PIK3CA E545A (chr3:179218304A>C, NM_006218.4:c.1634A>C) pathogenic mutation might
-be called as an artifact by MicroSEC, which may be a false positive error. 
-A PIK3CA pseudogene (LOC100422375) in chromosome 22 harbors a base substitution 
+be called as an artifact by MicroSEC, which may be a [false positive error](https://doi.org/10.1016/j.jgeb.2017.10.002). 
+A PIK3CA pseudogene (LOC100422375) in chromosome 22 harbors [a base substitution](https://doi.org/10.1016/j.jmoldx.2011.08.004) 
 which was identical with the mutation in PIK3CA c.1634A>C.  
 Please check the reads manually with IGV.  
 
@@ -66,6 +68,7 @@ The MicroSEC filter utilizes a statistical analysis, and the results for mutatio
 Two files are necessary for the analysis: mutation information file, BAM file.  
 A mutation supporting read ID information file is desirable but not necessary.  
 Prepare a sample information tsv file.  
+
 ### File 1: mutation information tsv file (required)  
 This tsv file should contain at least these contents (any number of other columns are allowed):  
 ```
@@ -84,6 +87,7 @@ SL_1010-N6-B  1-snv         chr1 108130741   C    T   N                         
     - Neighborhood_sequence: [5'-20 bases] + [Alt sequence] + [3'-20 bases].  
     - Sample, Chr, Pos, Ref, and Alt should be set exactly.  
     - If you do not know Mut_type, SimpleRepeat_TRF, or Neighborhood_sequence, enter "-".
+  
 ### File 2: BAM file (required)  
 This file should contain at least these contents (always included in standard BAM files):  
 - QNAME, FLAG, RNAME, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, ISIZE, and QUAL.  
@@ -105,7 +109,7 @@ Please download and use MicroSEC.R script file.
 From seven to ten columns are necessary. Three optional columns can be omitted.  
 The file contains no header.
 ```
-[sample name] [mutation information tsv file] [BAM file] [read length] [adapter sequence read 1] [optional: adapter sequence read 2] [sample type: Human or Mouse] [panel name] [optional: reference genome fastq file] [optional: simple repeat region bed file]  
+[sample name] [mutation information tsv file] [BAM file] [read length] [adapter sequence read 1] [optional: adapter sequence read 2] [sample type: Human or Mouse] [panel name] [optional: reference genome fasta file] [optional: simple repeat region bed file]  
 PC9	./source/CCLE.tsv	./source/Cell_line/PC9.bam 127	AGATCGGAAGAGCACACGTCTGAACTCCAGTCA AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT Human TOP
 A375 ./source/CCLE.tsv.gz	./source/Cell_line/A375.bam	127	 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT Hg38 TOP ./reference/hg38.fa ./reference/simpleRepeat.bed.gz
 ```
@@ -118,6 +122,7 @@ Reference fastq file is necessary when you using CRAM files.
   
 ### File 5: simple repeat region bed file (optional, but mandatory to detect simple repeat derived artifacts)  
 simpleRepeat.bed.gz file is necessary when you check simple repeat derived errors.  
+Bed file can be obtained from https://genome.ucsc.edu/cgi-bin/hgTables  
     
 ## Filtering detail
 This pipeline contains 8 filtering processes.  
@@ -176,7 +181,7 @@ Users should install the following packages prior to use the scripts, from an `R
 if (!requireNamespace("BiocManager", quietly = TRUE)){
     install.packages("BiocManager")
 }
-install.packages(c('stringr', 'dplyr', 'remotes'), dependencies = TRUE)
+install.packages(c('stringr', 'tidyverse', 'remotes'), dependencies = TRUE)
 BiocManager::install(c("Rsamtools", "Biostrings", "GenomicAlignments", "GenomeInfoDb"), update=FALSE)
 
 # install necessary genomes
@@ -213,11 +218,15 @@ The program does not use any of the functions specific to the following version 
 See also https://rdrr.io/cran/MicroSEC/
 - How to install
 ```
-# Stable version (v2.1.3) from github (recommended)
-remotes::install_github("MANO-B/MicroSEC", ref = 'v2.1.3')
+# Stable version (v2.1.6) from github (recommended)
+remotes::install_github("MANO-B/MicroSEC", ref = 'v2.1.6')
 
 # Developmental version from github
 remotes::install_github("MANO-B/MicroSEC")
+
+# Stable version (v2.1.3) from CRAN (not recommended)
+install.packages('MicroSEC', dependencies = FALSE)
+
 ```
 - How to use in command line
 ```
@@ -251,6 +260,8 @@ sample_info <- read.csv(sample_list,
                        sep = "\t")
 
 # initialize
+reference_genome <- NULL
+simple_repeat_list <- ""
 msec <- NULL
 homology_search <- NULL
 mut_depth <- NULL
@@ -299,7 +310,11 @@ for (sample in seq_len(dim(sample_info)[1])) {
   }
   
   # load mutation information
-  df_mutation <- fun_load_mutation(mutation_file, sample_name, ref_genome)
+  df_mutation <- fun_load_mutation(mutation_file,
+                                   sample_name,
+                                   ref_genome,
+                                   24,
+                                   simple_repeat_list)
   
   if (tools::file_ext(bam_file) == "bam") {
     bam_file_bai <- paste0(bam_file, ".bai")
